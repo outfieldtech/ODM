@@ -8,11 +8,23 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # Prepare directories
 WORKDIR /code
 
-# Copy everything
-COPY . ./
+# Copy build scripts and configuration
+COPY configure.sh requirements.txt vcpkg-requirements.txt vcpkg.json /code/
+COPY snap /code/snap
 
-# Run the build
-RUN PORTABLE_INSTALL=YES GPU_INSTALL=YES bash configure.sh install
+# Install system dependencies
+RUN bash configure.sh installreqs
+
+# Copy SuperBuild and helper scripts for compilation
+COPY SuperBuild /code/SuperBuild
+COPY docker /code/docker
+RUN PORTABLE_INSTALL=YES GPU_INSTALL=YES bash configure.sh compile
+
+# Install Python dependencies (separated to cache if only app code changes)
+RUN bash configure.sh installpython
+
+# Copy the rest of the application code
+COPY . /code/
 
 # Run the tests
 ENV PATH="/code/venv/bin:$PATH"
@@ -30,7 +42,7 @@ FROM nvidia/cuda:12.9.1-runtime-ubuntu24.04
 # Env variables
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONPATH="$PYTHONPATH:/code/SuperBuild/install/local/lib/python3.12/dist-packages:/code/SuperBuild/install/lib/python3.12/dist-packages:/code/SuperBuild/install/bin/opensfm" \
-    LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/code/SuperBuild/install/lib" \
+    LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/code/SuperBuild/install/lib:/usr/local/nvidia/lib64:/usr/local/nvidia/lib" \
     PDAL_DRIVER_PATH="/code/SuperBuild/install/bin"
 
 WORKDIR /code
@@ -38,7 +50,7 @@ WORKDIR /code
 # Copy everything we built from the builder
 COPY --from=builder /code /code
 
-ENV PATH="/code/venv/bin:$PATH"
+ENV PATH="/code/venv/bin:/usr/local/nvidia/bin:$PATH"
 
 RUN apt-get update -y \
  && apt-get install -y ffmpeg libtbbmalloc2
