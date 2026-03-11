@@ -54,18 +54,6 @@ ensure_prereqs() {
     echo "Installing tzdata"
     sudo $APT_GET install -y -qq tzdata
 
-    UBUNTU_VERSION=$(lsb_release -r)
-    if [[ "$UBUNTU_VERSION" == *"20.04"* ]]; then
-        echo "Enabling PPA for Ubuntu GIS"
-        sudo $APT_GET install -y -qq --no-install-recommends software-properties-common
-        sudo add-apt-repository ppa:ubuntugis/ppa
-        sudo $APT_GET update
-    elif [[ "$UBUNTU_VERSION" == *"24.04"* ]]; then
-        echo "Enabling ubuntugis-unstable PPA for Ubuntu 24.04"
-        sudo $APT_GET install -y -qq --no-install-recommends software-properties-common
-        sudo add-apt-repository -y ppa:ubuntugis/ubuntugis-unstable
-        sudo $APT_GET update
-    fi
 
     echo "Installing Python PIP"
     sudo $APT_GET install -y -qq --no-install-recommends \
@@ -113,6 +101,8 @@ installruntimedepsonly() {
     installdepsfromsnapcraft runtime opensfm
     echo "Installing OpenMVS Dependencies"
     installdepsfromsnapcraft runtime openmvs
+    echo "Installing GDAL Dependencies"
+    installdepsfromsnapcraft runtime gdal
 }
 
 installreqs() {
@@ -134,14 +124,23 @@ installreqs() {
     installdepsfromsnapcraft build opensfm
     echo "Installing OpenMVS Dependencies"
     installdepsfromsnapcraft build openmvs
+    echo "Installing GDAL Dependencies"
+    installdepsfromsnapcraft build gdal
     
     set -e
 
     # edt requires numpy to build
     venv/bin/pip install numpy==2.3.2
+    set +e
+}
+
+installpython() {
+    echo "Installing Python requirements with compiled GDAL"
+    cd /code
+    export GDAL_CONFIG=${RUNPATH}/SuperBuild/install/bin/gdal-config
+    
+    set -e
     venv/bin/pip install -r requirements.txt --ignore-installed
-    #if [ ! -z "$GPU_INSTALL" ]; then
-    #fi
     set +e
 }
     
@@ -165,11 +164,17 @@ install() {
     echo "Compiling SuperBuild"
     cd ${RUNPATH}/SuperBuild
     mkdir -p build && cd build
-    cmake .. && make -j$processes
+    cmake .. \
+        -DBUILD_PYTHON_BINDINGS=ON \
+        -DPython_ROOT=/code/venv \
+        -DPython_FIND_VIRTUALENV=ONLY \
+        && make -j$processes
+
+    installpython
 
     echo "Configuration Finished"
 }
-
+ 
 uninstall() {
     check_version
 
@@ -200,18 +205,20 @@ clean() {
 
 usage() {
     echo "Usage:"
-    echo "bash configure.sh <install|update|uninstall|installreqs|help> [nproc]"
+    echo "bash configure.sh <install|update|uninstall|installreqs|installpython|help> [nproc]"
     echo "Subcommands:"
     echo "  install"
     echo "    Installs all dependencies and modules for running OpenDroneMap"
     echo "  installruntimedepsonly"
     echo "    Installs *only* the runtime libraries (used by docker builds). To build from source, use the 'install' command."
+    echo "  installreqs"
+    echo "    Only installs the system requirements and dependencies (does not build SuperBuild or install Python packages)"
+    echo "  installpython"
+    echo "    Installs Python requirements after SuperBuild is compiled"
     echo "  reinstall"
     echo "    Removes SuperBuild and build modules, then re-installs them. Note this does not update OpenDroneMap to the latest version. "
     echo "  uninstall"
     echo "    Removes SuperBuild and build modules. Does not uninstall dependencies"
-    echo "  installreqs"
-    echo "    Only installs the requirements (does not build SuperBuild)"
     echo "  clean"
     echo "    Cleans the SuperBuild directory by removing temporary files. "
     echo "  help"
@@ -219,7 +226,7 @@ usage() {
     echo "[nproc] is an optional argument that can set the number of processes for the make -j tag. By default it uses $(nproc)"
 }
 
-if [[ $1 =~ ^(install|installruntimedepsonly|reinstall|uninstall|installreqs|clean)$ ]]; then
+if [[ $1 =~ ^(install|installruntimedepsonly|reinstall|uninstall|installreqs|installpython|clean)$ ]]; then
     RUNPATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
     "$1"
 else
