@@ -171,9 +171,15 @@ def compute_cutline(orthophoto_file, crop_area_file, destination, max_concurrenc
         if os.path.exists(destination):
             os.remove(destination)
         
+        from shapely.geometry import MultiPolygon
+        
         with fiona.open(destination, 'w', **meta) as sink:
+            obj = largest_cutline
+            if meta['schema']['geometry'] == 'MultiPolygon' and obj.geom_type == 'Polygon':
+                obj = MultiPolygon([obj])
+            
             sink.write({
-                'geometry': mapping(largest_cutline),
+                'geometry': mapping(obj),
                 'properties': {}
             })
         f.close()

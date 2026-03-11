@@ -58,24 +58,26 @@ class ODMApp:
         # Normal pipeline
         self.first_stage = dataset
 
-        dataset.connect(split) \
-                .connect(merge) \
-                .connect(opensfm)
+        dataset.connect(split)
 
-        if args.fast_orthophoto:
-            opensfm.connect(filterpoints)
-        else:
-            opensfm.connect(openmvs) \
-                   .connect(filterpoints)
-        
-        filterpoints \
-            .connect(meshing) \
-            .connect(texturing) \
-            .connect(georeferencing) \
-            .connect(dem) \
-            .connect(orthophoto) \
-            .connect(report) \
-            .connect(postprocess)
+        if not args.split_only:
+                split.connect(merge) \
+                     .connect(opensfm)
+
+                if args.fast_orthophoto:
+                    opensfm.connect(filterpoints)
+                else:
+                    opensfm.connect(openmvs) \
+                           .connect(filterpoints)
+                
+                filterpoints \
+                    .connect(meshing) \
+                    .connect(texturing) \
+                    .connect(georeferencing) \
+                    .connect(dem) \
+                    .connect(orthophoto) \
+                    .connect(report) \
+                    .connect(postprocess)
                 
     def execute(self):
         try:

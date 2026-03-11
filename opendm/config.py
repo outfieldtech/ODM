@@ -89,6 +89,7 @@ rerun_stages = {
     'sky_removal': 'dataset',
     'sm_cluster': 'split',
     'sm_no_align': 'split',
+    'split_only': 'split',
     'smrf_scalar': 'odm_dem',
     'smrf_slope': 'odm_dem',
     'smrf_threshold': 'odm_dem',
@@ -813,6 +814,12 @@ def config(argv=None, parser=None):
                               'The file needs to use the following format: \n'
                               'image_name group_name\n'
                               'Default: %(default)s'))
+
+    parser.add_argument('--split-only',
+                        action=StoreTrue,
+                        nargs=0,
+                        default=False,
+                        help='Stop processing after splitting the dataset into submodels. Useful for distributed workflows like Airflow. Default: %(default)s')
 
     parser.add_argument('--sm-no-align',
                     action=StoreTrue,

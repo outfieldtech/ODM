@@ -1,5 +1,6 @@
 import os
 import shutil
+import json
 from opendm import log
 from opendm.osfm import OSFMContext, get_submodel_argv, get_submodel_paths, get_all_submodel_paths
 from opendm import types
@@ -119,6 +120,19 @@ class ODMSplitStage(types.ODM_Stage):
                                 secondary_band_photos = p2s[filename]
                                 for p in secondary_band_photos:
                                     system.link_file(os.path.join(tree.dataset_raw, p.filename), submodel_images_dir)
+
+                if args.split_only:
+                    log.ODM_INFO("Dataset has been split into submodels. --split-only is set, stopping execution.")
+                    # Export submodel names to a json file
+                    submodels_json_path = os.path.join(args.project_path, "submodels.json")
+                    with open(submodels_json_path, 'w') as f:
+                        json.dump([os.path.basename(os.path.dirname(sp)) for sp in submodel_paths], f)
+                    
+                    # Restore max_concurrency value
+                    args.max_concurrency = orig_max_concurrency
+                    octx.touch(split_done_file)
+                    self.next_stage = None
+                    return
 
                 # Reconstruct each submodel
                 log.ODM_INFO("Dataset has been split into %s submodels. Reconstructing each submodel..." % len(submodel_paths))
