@@ -144,9 +144,7 @@ installpython() {
     set +e
 }
     
-install() {
-    installreqs
-
+compile() {
     if [ ! -z "$PORTABLE_INSTALL" ]; then
         echo "Replacing g++ and gcc with our scripts for portability..."
         if [ ! -e /usr/bin/gcc_real ]; then
@@ -169,9 +167,12 @@ install() {
         -DPython_ROOT=/code/venv \
         -DPython_FIND_VIRTUALENV=ONLY \
         && make -j$processes
+}
 
+install() {
+    installreqs
+    compile
     installpython
-
     echo "Configuration Finished"
 }
  
@@ -205,7 +206,7 @@ clean() {
 
 usage() {
     echo "Usage:"
-    echo "bash configure.sh <install|update|uninstall|installreqs|installpython|help> [nproc]"
+    echo "bash configure.sh <install|update|reinstall|uninstall|installreqs|compile|installpython|clean|help> [nproc]"
     echo "Subcommands:"
     echo "  install"
     echo "    Installs all dependencies and modules for running OpenDroneMap"
@@ -213,6 +214,8 @@ usage() {
     echo "    Installs *only* the runtime libraries (used by docker builds). To build from source, use the 'install' command."
     echo "  installreqs"
     echo "    Only installs the system requirements and dependencies (does not build SuperBuild or install Python packages)"
+    echo "  compile"
+    echo "    Compiles the SuperBuild"
     echo "  installpython"
     echo "    Installs Python requirements after SuperBuild is compiled"
     echo "  reinstall"
@@ -226,7 +229,7 @@ usage() {
     echo "[nproc] is an optional argument that can set the number of processes for the make -j tag. By default it uses $(nproc)"
 }
 
-if [[ $1 =~ ^(install|installruntimedepsonly|reinstall|uninstall|installreqs|installpython|clean)$ ]]; then
+if [[ $1 =~ ^(install|installruntimedepsonly|reinstall|uninstall|installreqs|compile|installpython|clean)$ ]]; then
     RUNPATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
     "$1"
 else

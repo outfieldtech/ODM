@@ -8,11 +8,23 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # Prepare directories
 WORKDIR /code
 
-# Copy everything
-COPY . ./
+# Copy build scripts and configuration
+COPY configure.sh requirements.txt vcpkg-requirements.txt vcpkg.json /code/
+COPY snap /code/snap
 
-# Run the build
-RUN PORTABLE_INSTALL=YES GPU_INSTALL=YES bash configure.sh install
+# Install system dependencies
+RUN bash configure.sh installreqs
+
+# Copy SuperBuild and helper scripts for compilation
+COPY SuperBuild /code/SuperBuild
+COPY docker /code/docker
+RUN PORTABLE_INSTALL=YES GPU_INSTALL=YES bash configure.sh compile
+
+# Install Python dependencies (separated to cache if only app code changes)
+RUN bash configure.sh installpython
+
+# Copy the rest of the application code
+COPY . /code/
 
 # Run the tests
 ENV PATH="/code/venv/bin:$PATH"
