@@ -1,0 +1,22 @@
+FROM opendronemap/odm:3.5.6
+USER root
+
+# Clean up existing code to avoid conflicts with our modified version
+RUN rm -rf /code/opendm /code/stages /code/run.py
+
+# Copy local changes (refactored for robustness)
+COPY opendm /code/opendm
+COPY stages /code/stages
+COPY run.py /code/run.py
+
+# Install minimal extra dependencies
+# Note: pillow-jxl-plugin is handled via try-except in get_image_size.py
+RUN pip3 install --no-cache-dir edt
+
+# Ensure permissions are correct
+RUN chown -R 1000:1000 /code
+
+# Standard ODM environment
+ENV PYTHONUNBUFFERED=1
+WORKDIR /code
+ENTRYPOINT ["/usr/bin/python3", "run.py"]
